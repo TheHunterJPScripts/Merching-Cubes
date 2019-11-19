@@ -1,0 +1,55 @@
+﻿#include "/Noise.compute"
+
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel Noise
+
+RWBuffer<float4> points;
+float3 centerPos;
+float numberThreads;
+
+[numthreads(16, 1, 1)]
+void Noise(uint3 id : SV_DispatchThreadID)
+{
+	float4 temp = points[id.x];
+	
+
+	///*Terraces maomenos*/
+	//float dist = snoise(float3(temp.x / 50, temp.y / 50, temp.z / 50)) * 20;
+	//float value = temp.y;
+	//temp.w = value + dist - value % 4;
+	//points[id.x] = temp;
+
+	///*Mola*/
+	//float dist = snoise(float3(temp.x / 20, temp.y / 20, temp.z / 20)) * 20;
+	//float value = temp.y;
+	//temp.w = value + (dist - dist % 2) - value % 2;
+	//points[id.x] = temp;
+
+	///*Triangular voxel.*/
+	//float dist = snoise(float3(temp.x / 20, temp.y / 20, temp.z / 20)) * 20;
+	//float value = temp.y;
+	//temp.w = value + dist;
+	//temp.w = temp.w - temp.w % 4;
+	//points[id.x] = temp;
+
+	///*Planetary generation*/
+	//float dist = snoise(float3(temp.x / 20, temp.y / 20, temp.z / 20)) * 20;
+	//float3 pos = float3(temp.x, temp.y, temp.z);
+	//float value = 10 - length(pos);
+	//temp.w = value + dist;
+	//temp.w = temp.w > 16 ? 16 : temp.w;
+	//temp.w = temp.w < -16 ? -16 : temp.w;
+	//temp.w = -temp.w;
+	//points[id.x] = temp;
+
+	/*Planetary generation*/
+	float dist = snoise(float3(temp.x / 20, temp.y / 20, temp.z / 20)) * 20;
+	float3 pos = float3(temp.x, temp.y, temp.z);
+	float value = 10 - length(pos);
+	temp.w = value + dist;
+	temp.w = temp.w > 16 ? 16 : temp.w;
+	temp.w = temp.w < -16 ? -16 : temp.w;
+	temp.w = temp.w - temp.w % 4;
+	temp.w = -temp.w;
+	points[id.x] = temp;
+}

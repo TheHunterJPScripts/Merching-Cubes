@@ -1,0 +1,66 @@
+﻿#pragma kernel CallTriangles
+#include "/MarchTables.compute"
+
+struct Triangle {
+	float3 a;
+	float3 b;
+	float3 c;
+};
+
+RWBuffer<float4> points;
+AppendStructuredBuffer<Triangle> triangles;
+int count;
+float isolevel;
+
+float3 interpolateVerts(float4 v1, float4 v2) {
+	float t = (isolevel - v1.w) / (v2.w - v1.w);
+	return v1.xyz + t * (v2.xyz - v1.xyz);
+}
+
+
+[numthreads(16, 1, 1)]
+void CallTriangles(uint3 id : SV_DispatchThreadID)
+{
+	float3 vertlist[12];
+	float4 coords[8]= {
+			points[id.x], 
+			points[id.x + 1],
+			points[id.x + 1 + count * count],
+			points[id.x + count * count], 
+
+			points[id.x + count], 
+			points[id.x + 1 + count],
+			points[id.x + count * count + count], 
+			points[id.x + 1 + count * count + count]
+	};
+
+	int cubeIndex = 0;
+	if (coords[0].w < isolevel) cubeIndex |= 1;
+	if (coords[1].w < isolevel) cubeIndex |= 2;
+	if (coords[2].w < isolevel) cubeIndex |= 4;
+	if (coords[3].w < isolevel) cubeIndex |= 8;
+	if (coords[4].w < isolevel) cubeIndex |= 16;
+	if (coords[5].w < isolevel) cubeIndex |= 32;
+	if (coords[6].w < isolevel) cubeIndex |= 64;
+	if (coords[7].w < isolevel) cubeIndex |= 128;
+
+	// Create triangles for current cube configuration
+	for (int i = 0; triangulation[cubeIndex][i] != -1; i += 3) {
+		// Get indices of corner points A and B for each of the three edges
+		// of the cube that need to be joined to form the triangle.
+		int a0 = cornerIndexAFromEdge[triangulation[cubeIndex][i]];
+		int b0 = cornerIndexBFromEdge[triangulation[cubeIndex][i]];
+
+		int a1 = cornerIndexAFromEdge[triangulation[cubeIndex][i + 1]];
+		int b1 = cornerIndexBFromEdge[triangulation[cubeIndex][i + 1]];
+
+		int a2 = cornerIndexAFromEdge[triangulation[cubeIndex][i + 2]];
+		int b2 = cornerIndexBFromEdge[triangulation[cubeIndex][i + 2]];
+
+		Triangle tri;
+		tri.a = interpolateVerts(coords[a0], coords[b0]);
+		tri.b = interpolateVerts(coords[a1], coords[b1]);
+		tri.c = interpolateVerts(coords[a2], coords[b2]);
+		triangles.Append(tri);
+	}
+}
